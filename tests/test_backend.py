@@ -280,6 +280,11 @@ plugins = false
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--codex", required=True, type=Path)
+    parser.add_argument("--expected-version")
     args, unittest_args = parser.parse_known_args()
     CODEX = args.codex.resolve()
+    if args.expected_version:
+        actual = subprocess.check_output([str(CODEX), "--version"], text=True).strip()
+        if actual != f"codex-cli {args.expected_version}":
+            parser.error(f"backend version mismatch: {actual}")
     unittest.main(argv=[__file__, *unittest_args], verbosity=2)

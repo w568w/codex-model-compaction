@@ -76,7 +76,8 @@ jobs:
         run: |
           mkdir -p .work/backend
           tar --zstd -xf .work/backend.tar.zst -C .work/backend
-          python3 tests/test_backend.py --codex .work/backend/bin/codex
+          python3 tests/test_backend.py --codex .work/backend/bin/codex \
+            --expected-version "$(python3 -c 'import json; print(json.load(open(".work/manifest.json"))["codex_version"])')"
       - if: steps.backend.outputs.cache-hit != 'true'
         uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830
         with:
@@ -150,6 +151,7 @@ jobs:
     runs-on: ubuntu-24.04
     permissions:
       contents: write
+      actions: write
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
@@ -157,3 +159,12 @@ jobs:
       - run: python3 scripts/heartbeat.py
         env:
           GH_TOKEN: ${{ github.token }}
+      - name: Remove temporary artifacts after successful publication
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/artifacts" \
+            --jq '.artifacts[] | select(.name == "build-manifest" or .name == "unsigned-release" or .name == "github-pages") | .id' \
+            | while read -r artifact_id; do
+                gh api --method DELETE "repos/$GITHUB_REPOSITORY/actions/artifacts/$artifact_id"
+              done
