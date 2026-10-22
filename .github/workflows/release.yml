@@ -87,6 +87,7 @@ jobs:
           python3 scripts/package.py stage .work
           useradd --create-home builder
           chown -R builder:builder .work/package
+          # shellcheck disable=SC2016
           runuser -u builder -- bash -c 'cd "$1" && makepkg --force --noconfirm --nodeps && namcap ./*.pkg.tar.zst' bash "$PWD/.work/package"
           python3 scripts/package.py collect .work
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
@@ -140,3 +141,19 @@ jobs:
     steps:
       - id: deployment
         uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e
+
+  maintain-schedule:
+    needs: [probe, deploy]
+    if: >-
+      always() && needs.probe.result == 'success' &&
+      (needs.probe.outputs.changed != 'true' || needs.deploy.result == 'success')
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - run: python3 scripts/heartbeat.py
+        env:
+          GH_TOKEN: ${{ github.token }}

@@ -25,6 +25,33 @@ def database(version="26.1016.61520-1"):
 
 
 class PipelineTests(unittest.TestCase):
+    def test_workspace_lock_normalization_preserves_external_dependencies(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "Cargo.toml").write_text('[workspace.package]\nversion = "1.2.3"\n')
+            (root / "local").mkdir()
+            (root / "local/Cargo.toml").write_text('[package]\nname = "local"\nversion.workspace = true\n')
+            (root / "Cargo.lock").write_text('''version = 4
+
+[[package]]
+name = "local"
+version = "0.0.0"
+dependencies = ["external"]
+
+[[package]]
+name = "external"
+version = "7.8.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "unchanged"
+''')
+            subprocess.run([sys.executable, str(desktop.ROOT / "scripts/normalize-lock.py"), str(root)], check=True)
+            import tomllib
+            packages = tomllib.loads((root / "Cargo.lock").read_text())["package"]
+            self.assertEqual(packages[0]["version"], "1.2.3")
+            self.assertEqual(packages[1], {"name": "external", "version": "7.8.9",
+                                          "source": "registry+https://github.com/rust-lang/crates.io-index",
+                                          "checksum": "unchanged"})
+
     def test_repository_description_and_unchanged_fast_path(self):
         self.assertEqual(desktop.package_entry(database())["VERSION"], ["26.1016.61520-1"])
         with tempfile.TemporaryDirectory() as directory:

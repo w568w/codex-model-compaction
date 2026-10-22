@@ -82,10 +82,10 @@ index f8e8891..bee9a70 100644
          let defaults = Self {
              remote_compaction: if info.is_openai()
 diff --git a/codex-rs/model-provider/src/capabilities_tests.rs b/codex-rs/model-provider/src/capabilities_tests.rs
-index c22c17f..4fab01a 100644
+index c22c17f..faa1ea8 100644
 --- a/codex-rs/model-provider/src/capabilities_tests.rs
 +++ b/codex-rs/model-provider/src/capabilities_tests.rs
-@@ -33,3 +33,35 @@ fn capability_overrides_preserve_unspecified_provider_defaults() {
+@@ -33,3 +33,30 @@ fn capability_overrides_preserve_unspecified_provider_defaults() {
          );
      }
  }
@@ -96,18 +96,13 @@ index c22c17f..4fab01a 100644
 +        remote_compaction: RemoteCompactionSupport::V2,
 +        ..Default::default()
 +    };
-+    for model in [
-+        "gpt-6.1-sol",
-+        "kimi-k3",
-+        "gpt-5.5",
-+        "deepseek-v4",
-+        "gemini-3.5-flash",
++    for (model, expected) in [
++        ("gpt-6.1-sol", RemoteCompactionSupport::V2),
++        ("kimi-k3", RemoteCompactionSupport::Unsupported),
++        ("gpt-5.5", RemoteCompactionSupport::V2),
++        ("deepseek-v4", RemoteCompactionSupport::Unsupported),
++        ("gemini-3.5-flash", RemoteCompactionSupport::Unsupported),
 +    ] {
-+        let expected = if model.starts_with("gpt-") {
-+            RemoteCompactionSupport::V2
-+        } else {
-+            RemoteCompactionSupport::Unsupported
-+        };
 +        assert_eq!(capabilities.remote_compaction_for_model(model), expected);
 +    }
 +    assert_eq!(capabilities.remote_compaction, RemoteCompactionSupport::V2);

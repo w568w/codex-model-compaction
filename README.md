@@ -51,6 +51,8 @@ GitHub Actions checks the signed official Desktop Arch repository every six
 hours. New Desktop packages are verified against the pinned OpenAI Linux signing
 key. The bundled `codex --version` selects an exact public `openai/codex` tag;
 missing tags, signature failures, patch conflicts, or failed tests stop release.
+An occasional maintenance commit after 45 quiet days prevents GitHub from
+disabling the scheduled workflow for an inactive public fork.
 
 The workflow builds matching `codex`, `codex-code-mode-host`, and
 `codex-responses-api-proxy` binaries with the source's locked Rust toolchain,
