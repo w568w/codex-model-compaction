@@ -236,13 +236,20 @@ plugins = false
             latest = [request for name, kind, request in self.gateway.requests if name == model and kind == "normal"][-1]
             self.assertIn(marker, json.dumps(latest["input"]))
             self.assertTrue(any(name == model and kind == "normal" and
-                                "function_call_output" in json.dumps(request["input"])
+                                "function_call_output" in json.dumps(request["input"]) and
+                                "compaction-tool-ok" in json.dumps(request["input"])
                                 for name, kind, request in self.gateway.requests), "tool execution must complete")
         self.turn(threads[1], MODELS[0])
         self.app.completed(threads[1])
         self.app.request("thread/compact/start", {"threadId": threads[1]})
         self.app.completed(threads[1])
         self.assertEqual(self.kinds()[(MODELS[0], "remote")], 2)
+        self.turn(threads[1], MODELS[1])
+        self.app.completed(threads[1])
+        self.app.request("thread/compact/start", {"threadId": threads[1]})
+        self.app.completed(threads[1])
+        self.assertEqual(self.kinds()[(MODELS[1], "local")], 2)
+        self.assertEqual(self.kinds()[(MODELS[1], "remote")], 0)
 
     def test_foreground_automatic_compaction(self):
         threads = [self.thread(model, automatic=True) for model in MODELS]
