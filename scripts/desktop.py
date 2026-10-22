@@ -129,13 +129,15 @@ def resolve(work, previous):
                    *sorted((ROOT / "patches").glob("*.patch"))]
     build_digest = hashlib.sha256(b"".join(path.read_bytes() for path in build_files)).hexdigest()
     commit = source_commit(tag)
+    backend_key = hashlib.sha256(f"{commit}\n{build_digest}".encode()).hexdigest()
     return {
         "package": PACKAGE_NAME, "pkgver": pkgver, "pkgrel": pkgrel,
         "desktop_version": desktop_version, "desktop_filename": filename,
         "desktop_sha256": entry["SHA256SUM"][0], "codex_version": codex_version,
         "upstream_tag": tag, "upstream_commit": commit,
         "pipeline_sha256": fingerprint,
-        "backend_key": hashlib.sha256(f"{commit}\n{build_digest}".encode()).hexdigest(),
+        "backend_key": backend_key,
+        "reuse_release_tag": previous.get("release_tag", "") if previous.get("backend_key") == backend_key else "",
         "patches": {path.name: sha256(path) for path in sorted((ROOT / "patches").glob("*.patch"))},
         "architecture": "x86_64",
         "release_tag": f"desktop-{pkgver}-p{pkgrel}",
@@ -158,7 +160,7 @@ def main():
         with open(output, "a") as stream:
             print(f"changed={str(changed).lower()}", file=stream)
             if changed:
-                for key in ("pkgver", "pkgrel", "backend_key", "release_tag", "upstream_tag", "upstream_commit"):
+                for key in ("pkgver", "pkgrel", "backend_key", "reuse_release_tag", "release_tag", "upstream_tag", "upstream_commit"):
                     print(f"{key}={manifest[key]}", file=stream)
 
 

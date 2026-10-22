@@ -11,6 +11,7 @@ from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 import desktop
 import publish
+import reuse_backend
 
 
 def database(version="26.1016.61520-1"):
@@ -25,6 +26,30 @@ def database(version="26.1016.61520-1"):
 
 
 class PipelineTests(unittest.TestCase):
+    def test_release_reuse_checks_identity_before_filling_cache(self):
+        with tempfile.TemporaryDirectory() as directory:
+            work = Path(directory)
+            expected = {"reuse_release_tag": "desktop-1.0-p1", "backend_key": "same-build",
+                        "codex_version": "1.2.3", "upstream_commit": "same-source"}
+            (work / "manifest.json").write_text(json.dumps(expected))
+            payload = b"signature-verified-build"
+            import hashlib
+            previous = {**expected, "backend_sha256": hashlib.sha256(payload).hexdigest()}
+
+            def download(url, destination):
+                name = Path(url).name
+                Path(destination).write_bytes(json.dumps(previous).encode() if name == "manifest.json"
+                                              else payload if name == "backend.tar.zst" else b"signature")
+
+            with patch.object(reuse_backend, "download", side_effect=download), patch.object(reuse_backend, "run"):
+                self.assertTrue(reuse_backend.reuse(work))
+                self.assertEqual((work / "backend.tar.zst").read_bytes(), payload)
+                (work / "backend.tar.zst").unlink()
+                previous["backend_key"] = "different-build"
+                with self.assertRaisesRegex(ValueError, "differs on backend_key"):
+                    reuse_backend.reuse(work)
+                self.assertFalse((work / "backend.tar.zst").exists())
+
     def test_workspace_lock_normalization_preserves_external_dependencies(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

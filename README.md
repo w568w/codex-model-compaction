@@ -62,7 +62,9 @@ The workflow builds matching `codex`, `codex-code-mode-host`, and
 Cargo dependencies, and verified V8 artifacts. Native policy tests and actual
 app-server tests with a local mock Responses gateway run before packaging.
 Previously verified binaries are reused when the backend source and patch have
-not changed. CI never receives personal model API credentials.
+not changed. If Actions evicts its cache, the workflow restores the previous
+Release's backend archive after verifying its signature, identity, and checksum.
+CI never receives personal model API credentials.
 
 The signing job signs the Arch package, backend archive, release manifest, and
 repository databases. GitHub Releases preserve build artifacts; an atomic Pages

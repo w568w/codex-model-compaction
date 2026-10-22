@@ -70,15 +70,19 @@ jobs:
           path: .work/backend.tar.zst
           key: arch-backend-${{ needs.probe.outputs.backend_key }}
       - if: steps.backend.outputs.cache-hit != 'true'
+        name: Restore a matching signed release if the cache was evicted
+        id: released-backend
+        run: python3 scripts/reuse_backend.py .work
+      - if: steps.backend.outputs.cache-hit != 'true' && steps.released-backend.outputs.reused != 'true'
         name: Prepare pinned source and toolchain
         run: bash scripts/prepare-backend.sh .work
-      - if: steps.backend.outputs.cache-hit != 'true'
+      - if: steps.backend.outputs.cache-hit != 'true' && steps.released-backend.outputs.reused != 'true'
         uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0
         with:
           workspaces: .work/upstream/codex-rs -> target
           shared-key: arch-gnu-release
           cache-on-failure: true
-      - if: steps.backend.outputs.cache-hit != 'true'
+      - if: steps.backend.outputs.cache-hit != 'true' && steps.released-backend.outputs.reused != 'true'
         name: Apply patch, test policy, and build matching binaries
         run: bash scripts/build-backend.sh .work --prepared
       - if: steps.backend.outputs.cache-hit != 'true'
