@@ -36,8 +36,13 @@ key with `pacman-key`, adds this repository, and runs a normal full upgrade:
 ```ini
 [codex-model-compaction]
 SigLevel = Required
+CacheServer = https://github.com/w568w/codex-model-compaction/releases/latest/download
 Server = https://www.w568w.eu.org/codex-model-compaction/repo/$arch
 ```
+
+Package downloads try GitHub Release assets first. Pages serves the signed
+repository database and retained archives as a fallback, using pacman's native
+`CacheServer` support.
 
 Fully quit Desktop once, then launch **ChatGPT (Model Compaction)**. That launcher
 sets `CODEX_CLI_PATH=/usr/bin/codex-model-compaction`. The package does not overwrite
