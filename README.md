@@ -26,8 +26,8 @@ Repository signing fingerprint:
 Download and inspect the installer, then run it:
 
 ```sh
-curl --proto '=https' --proto-redir '=https' -fL https://www.w568w.eu.org/codex-model-compaction/install.sh -o /tmp/install-codex-model-compaction.sh
-bash /tmp/install-codex-model-compaction.sh
+curl --proto '=https' --proto-redir '=https' --retry 3 --retry-all-errors -fL https://www.w568w.eu.org/codex-model-compaction/install.sh -o /tmp/install-codex-model-compaction.sh &&
+  bash /tmp/install-codex-model-compaction.sh
 ```
 
 The installer checks the public key fingerprint, imports and locally signs that
