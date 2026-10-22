@@ -14,6 +14,8 @@ compaction for a provider that disables it.
 
 ## Installation
 
+Start with the official `chatgpt-bin` installation and its OpenAI Arch repository enabled.
+
 This project uses the owner's existing GitHub Pages custom domain, served directly
 over HTTPS at https://www.w568w.eu.org/codex-model-compaction/.
 
