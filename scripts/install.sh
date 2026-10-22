@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-repo_url=https://w568w.github.io/codex-model-compaction
+repo_url=https://www.w568w.eu.org/codex-model-compaction
 fingerprint=93ABE6A96FE686C876BCCA16FF628EB8B9BA6C2C
 temporary=$(mktemp -d)
 trap 'rm -rf -- "$temporary"' EXIT
-curl --fail --location "$repo_url/repository.asc" --output "$temporary/repository.asc"
+curl --proto '=https' --proto-redir '=https' --fail --location "$repo_url/repository.asc" --output "$temporary/repository.asc"
 actual=$(gpg --batch --show-keys --with-colons "$temporary/repository.asc" | awk -F: '$1 == "fpr" { print $10; exit }')
 [[ "$actual" == "$fingerprint" ]]
 sudo pacman-key --add "$temporary/repository.asc"

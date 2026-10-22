@@ -14,6 +14,9 @@ compaction for a provider that disables it.
 
 ## Installation
 
+This project uses the owner's existing GitHub Pages custom domain, served directly
+over HTTPS at https://www.w568w.eu.org/codex-model-compaction/.
+
 Repository signing fingerprint:
 
 `93ABE6A96FE686C876BCCA16FF628EB8B9BA6C2C`
@@ -21,7 +24,7 @@ Repository signing fingerprint:
 Download and inspect the installer, then run it:
 
 ```sh
-curl -fL https://w568w.github.io/codex-model-compaction/install.sh -o /tmp/install-codex-model-compaction.sh
+curl --proto '=https' --proto-redir '=https' -fL https://www.w568w.eu.org/codex-model-compaction/install.sh -o /tmp/install-codex-model-compaction.sh
 bash /tmp/install-codex-model-compaction.sh
 ```
 
@@ -31,7 +34,7 @@ key with `pacman-key`, adds this repository, and runs a normal full upgrade:
 ```ini
 [codex-model-compaction]
 SigLevel = Required
-Server = https://w568w.github.io/codex-model-compaction/repo/$arch
+Server = https://www.w568w.eu.org/codex-model-compaction/repo/$arch
 ```
 
 Fully quit Desktop once, then launch **ChatGPT (Model Compaction)**. That launcher

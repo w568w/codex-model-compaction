@@ -17,7 +17,7 @@ import urllib.request
 ROOT = Path(__file__).resolve().parents[1]
 DESKTOP_REPO = "https://persistent.oaistatic.com/codex-app-prod/linux/arch/x86_64"
 PACKAGE_NAME = "codex-model-compaction"
-PUBLIC_SITE = "https://w568w.github.io/codex-model-compaction"
+PUBLIC_SITE = "https://www.w568w.eu.org/codex-model-compaction"
 
 
 def run(*args, **kwargs):
@@ -29,7 +29,7 @@ def download(url, destination):
     destination.parent.mkdir(parents=True, exist_ok=True)
     temporary = destination.with_name(destination.name + ".part")
     print(f"Downloading {destination.name}", flush=True)
-    run("curl", "--fail", "--location", "--silent", "--show-error", "--retry", "3",
+    run("curl", "--proto", "=https", "--proto-redir", "=https", "--fail", "--location", "--silent", "--show-error", "--retry", "3",
         "--connect-timeout", "15", "--max-time", "600", url, "--output", str(temporary))
     temporary.replace(destination)
 
@@ -41,7 +41,7 @@ def sha256(path):
 
 def pipeline_digest():
     digest = hashlib.sha256()
-    for directory in ("scripts", "arch", "patches", "tests", ".github/workflows"):
+    for directory in ("scripts", "arch", "keys", "patches", "tests", ".github/workflows"):
         for path in sorted((ROOT / directory).rglob("*")):
             if path.is_file() and "__pycache__" not in path.parts:
                 digest.update(str(path.relative_to(ROOT)).encode() + b"\0")
