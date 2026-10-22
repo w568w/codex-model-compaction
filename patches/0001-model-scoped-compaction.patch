@@ -53,7 +53,7 @@ index bb80f85..b96a2bd 100644
      }
      let result = {
 diff --git a/codex-rs/core/src/session/turn.rs b/codex-rs/core/src/session/turn.rs
-index d1d4362..9414157 100644
+index d1d4362..a826b84 100644
 --- a/codex-rs/core/src/session/turn.rs
 +++ b/codex-rs/core/src/session/turn.rs
 @@ -219,7 +219,11 @@ pub(crate) async fn run_turn(
@@ -69,7 +69,17 @@ index d1d4362..9414157 100644
              RemoteCompactionSupport::V2 => Some("Error running remote compact task".to_string()),
              RemoteCompactionSupport::Unsupported => None,
          };
-@@ -1543,7 +1547,11 @@ async fn run_auto_compact(
+@@ -415,7 +419,8 @@ pub(crate) async fn run_turn(
+         .await;
+     }
+ 
+-    if super::async_compaction::enabled(&turn_context) {
++    if super::async_compaction::enabled(&turn_context, &first_step_context.settings.model_info.slug)
++    {
+         let token_status = super::context_window::context_window_token_status(
+             sess.as_ref(),
+             turn_context.as_ref(),
+@@ -1543,7 +1548,11 @@ async fn run_auto_compact(
          return Ok(true);
      }
  

@@ -70,19 +70,28 @@ jobs:
           path: .work/backend.tar.zst
           key: arch-backend-${{ needs.probe.outputs.backend_key }}
       - if: steps.backend.outputs.cache-hit != 'true'
+        name: Prepare pinned source and toolchain
+        run: bash scripts/prepare-backend.sh .work
+      - if: steps.backend.outputs.cache-hit != 'true'
+        uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0
+        with:
+          workspaces: .work/upstream/codex-rs -> target
+          shared-key: arch-gnu-release
+          cache-on-failure: true
+      - if: steps.backend.outputs.cache-hit != 'true'
         name: Apply patch, test policy, and build matching binaries
-        run: bash scripts/build-backend.sh .work
+        run: bash scripts/build-backend.sh .work --prepared
+      - if: steps.backend.outputs.cache-hit != 'true'
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830
+        with:
+          path: .work/backend.tar.zst
+          key: arch-backend-${{ needs.probe.outputs.backend_key }}
       - name: Exercise actual app-server with a mock gateway
         run: |
           mkdir -p .work/backend
           tar --zstd -xf .work/backend.tar.zst -C .work/backend
           python3 tests/test_backend.py --codex .work/backend/bin/codex \
             --expected-version "$(python3 -c 'import json; print(json.load(open(".work/manifest.json"))["codex_version"])')"
-      - if: steps.backend.outputs.cache-hit != 'true'
-        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830
-        with:
-          path: .work/backend.tar.zst
-          key: arch-backend-${{ needs.probe.outputs.backend_key }}
       - name: Build and inspect Arch package
         run: |
           python3 scripts/package.py stage .work
