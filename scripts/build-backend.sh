@@ -51,7 +51,7 @@ cd "$source_dir/codex-rs"
 toolchain=$(python3 -c 'import tomllib; print(tomllib.load(open("rust-toolchain.toml", "rb"))["toolchain"]["channel"])')
 rustup toolchain install "$toolchain" --profile minimal
 rustup show active-toolchain
-cargo test --locked -p codex-model-provider compaction_policy --lib
+cargo test --locked --release -p codex-model-provider compaction_policy --lib
 cargo build --locked --release --bin codex --bin codex-code-mode-host --bin codex-responses-api-proxy
 mkdir -p "$work_dir/backend/bin"
 for binary in codex codex-code-mode-host codex-responses-api-proxy; do
