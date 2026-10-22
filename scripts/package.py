@@ -21,7 +21,7 @@ def stage(work):
     shutil.copy2(work / "backend.tar.zst", destination / "backend.tar.zst")
     shutil.copy2(work / "manifest.json", destination / "manifest.json")
     values = {"pkgver": manifest["pkgver"], "pkgrel": str(manifest["pkgrel"]),
-              "desktop_pkgver": manifest["pkgver"], "codex_version": manifest["codex_version"]}
+              "desktop_pkgver": manifest["desktop_version"], "codex_version": manifest["codex_version"]}
     for key, filename in (("backend", "backend.tar.zst"), ("manifest", "manifest.json"),
                           ("desktop", "chatgpt-compaction.desktop"), ("license", "LICENSE"), ("notice", "NOTICE")):
         values[f"{key}_sha256"] = sha256(destination / filename)
@@ -39,7 +39,7 @@ def collect(work):
     info = subprocess.check_output(["bsdtar", "-xOf", str(package), ".PKGINFO"], text=True)
     assert f"pkgname = {manifest['package']}\n" in info
     assert f"pkgver = {manifest['pkgver']}-{manifest['pkgrel']}\n" in info
-    assert f"depend = chatgpt-bin={manifest['pkgver']}\n" in info
+    assert f"depend = chatgpt-bin={manifest['desktop_version']}\n" in info
     members = subprocess.check_output(["bsdtar", "-tf", str(package)], text=True).splitlines()
     for path in ("usr/lib/codex-model-compaction/bin/codex", "usr/lib/codex-model-compaction/bin/codex-code-mode-host",
                  "usr/lib/codex-model-compaction/bin/codex-responses-api-proxy", "usr/share/applications/chatgpt-compaction.desktop"):
