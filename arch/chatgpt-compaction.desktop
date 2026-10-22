@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=ChatGPT (Model Compaction)
+Name[zh_CN]=ChatGPT（模型压缩）
+Comment=GPT remote compaction and ordinary summarization for other models
+Exec=env CODEX_CLI_PATH=/usr/bin/codex-model-compaction chatgpt %U
+Icon=chatgpt
+Type=Application
+StartupNotify=true
+Categories=Utility;Development;
+MimeType=x-scheme-handler/codex;

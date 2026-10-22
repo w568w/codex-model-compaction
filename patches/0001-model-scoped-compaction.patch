@@ -1,0 +1,123 @@
+diff --git a/codex-rs/core/src/session/async_compaction.rs b/codex-rs/core/src/session/async_compaction.rs
+index bb80f85..b95d44a 100644
+--- a/codex-rs/core/src/session/async_compaction.rs
++++ b/codex-rs/core/src/session/async_compaction.rs
+@@ -44,7 +44,10 @@ pub(super) fn enabled(turn_context: &TurnContext) -> bool {
+         .enabled(Feature::AsyncCompaction)
+         && !turn_context.config.features.enabled(Feature::TokenBudget)
+         && matches!(
+-            turn_context.provider.capabilities().remote_compaction,
++            turn_context
++                .provider
++                .capabilities()
++                .remote_compaction_for_model(&turn_context.capture_current_model_info().slug),
+             RemoteCompactionSupport::V2
+         )
+ }
+diff --git a/codex-rs/core/src/session/turn.rs b/codex-rs/core/src/session/turn.rs
+index d1d4362..9414157 100644
+--- a/codex-rs/core/src/session/turn.rs
++++ b/codex-rs/core/src/session/turn.rs
+@@ -219,7 +219,11 @@ pub(crate) async fn run_turn(
+             .await;
+         // Publish the failure only after prompt hooks finish, so clients cannot react to
+         // an error by steering follow-up input into a turn still preserving its prompt.
+-        let message_prefix = match turn_context.provider.capabilities().remote_compaction {
++        let message_prefix = match turn_context
++            .provider
++            .capabilities()
++            .remote_compaction_for_model(&turn_context.capture_current_model_info().slug)
++        {
+             RemoteCompactionSupport::V2 => Some("Error running remote compact task".to_string()),
+             RemoteCompactionSupport::Unsupported => None,
+         };
+@@ -1543,7 +1547,11 @@ async fn run_auto_compact(
+         return Ok(true);
+     }
+ 
+-    match turn_context.provider.capabilities().remote_compaction {
++    match turn_context
++        .provider
++        .capabilities()
++        .remote_compaction_for_model(&step_context.settings.model_info.slug)
++    {
+         RemoteCompactionSupport::V2 => {
+             let has_candidate = candidate.is_some();
+             if !has_candidate {
+diff --git a/codex-rs/core/src/tasks/compact.rs b/codex-rs/core/src/tasks/compact.rs
+index 6014a2d..ea10e7c 100644
+--- a/codex-rs/core/src/tasks/compact.rs
++++ b/codex-rs/core/src/tasks/compact.rs
+@@ -60,7 +60,11 @@ impl SessionTask for CompactTask {
+             return Ok(None);
+         }
+ 
+-        let result = match ctx.provider.capabilities().remote_compaction {
++        let result = match ctx
++            .provider
++            .capabilities()
++            .remote_compaction_for_model(&step_context.settings.model_info.slug)
++        {
+             RemoteCompactionSupport::V2 => {
+                 emit_compact_metric(
+                     &session.services.session_telemetry,
+diff --git a/codex-rs/model-provider/src/capabilities.rs b/codex-rs/model-provider/src/capabilities.rs
+index f8e8891..bee9a70 100644
+--- a/codex-rs/model-provider/src/capabilities.rs
++++ b/codex-rs/model-provider/src/capabilities.rs
+@@ -28,6 +28,15 @@ impl Default for ProviderCapabilities {
+ }
+ 
+ impl ProviderCapabilities {
++    /// Non-GPT models use ordinary summarization behind shared Responses gateways.
++    pub fn remote_compaction_for_model(&self, model: &str) -> RemoteCompactionSupport {
++        if model.starts_with("gpt-") {
++            self.remote_compaction
++        } else {
++            RemoteCompactionSupport::Unsupported
++        }
++    }
++
+     pub(crate) fn from_config(info: &ModelProviderInfo) -> Self {
+         let defaults = Self {
+             remote_compaction: if info.is_openai()
+diff --git a/codex-rs/model-provider/src/capabilities_tests.rs b/codex-rs/model-provider/src/capabilities_tests.rs
+index c22c17f..4fab01a 100644
+--- a/codex-rs/model-provider/src/capabilities_tests.rs
++++ b/codex-rs/model-provider/src/capabilities_tests.rs
+@@ -33,3 +33,35 @@ fn capability_overrides_preserve_unspecified_provider_defaults() {
+         );
+     }
+ }
++
++#[test]
++fn compaction_policy_is_model_scoped_on_a_shared_provider() {
++    let capabilities = ProviderCapabilities {
++        remote_compaction: RemoteCompactionSupport::V2,
++        ..Default::default()
++    };
++    for model in [
++        "gpt-6.1-sol",
++        "kimi-k3",
++        "gpt-5.5",
++        "deepseek-v4",
++        "gemini-3.5-flash",
++    ] {
++        let expected = if model.starts_with("gpt-") {
++            RemoteCompactionSupport::V2
++        } else {
++            RemoteCompactionSupport::Unsupported
++        };
++        assert_eq!(capabilities.remote_compaction_for_model(model), expected);
++    }
++    assert_eq!(capabilities.remote_compaction, RemoteCompactionSupport::V2);
++}
++
++#[test]
++fn compaction_policy_preserves_provider_restrictions() {
++    let capabilities = ProviderCapabilities::default();
++    assert_eq!(
++        capabilities.remote_compaction_for_model("gpt-6.1-sol"),
++        RemoteCompactionSupport::Unsupported,
++    );
++}

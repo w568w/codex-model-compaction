@@ -1,0 +1,25 @@
+pkgname=codex-model-compaction
+source "$startdir/release.env"
+pkgdesc='Model-aware context compaction backend for ChatGPT Desktop'
+arch=(x86_64)
+url='https://github.com/w568w/codex-model-compaction'
+license=(Apache-2.0)
+depends=("chatgpt-bin=$desktop_pkgver" bubblewrap bzip2 glibc libcap libgcc
+         oniguruma openssl ripgrep sqlite xz zlib zstd)
+options=('!debug' '!strip')
+source=('backend.tar.zst' 'manifest.json' 'chatgpt-compaction.desktop' 'LICENSE' 'NOTICE')
+sha256sums=("$backend_sha256" "$manifest_sha256" "$desktop_sha256" "$license_sha256" "$notice_sha256")
+
+package() {
+  local root="$pkgdir/usr/lib/codex-model-compaction"
+  install -Dm755 -t "$root/bin" "$srcdir/bin/"{codex,codex-code-mode-host,codex-responses-api-proxy}
+  install -Dm644 "$srcdir/manifest.json" "$root/manifest.json"
+  install -d "$pkgdir/usr/bin" "$root/codex-path" "$root/codex-resources"
+  ln -s ../lib/codex-model-compaction/bin/codex "$pkgdir/usr/bin/codex-model-compaction"
+  ln -s /usr/bin/rg "$root/codex-path/rg"
+  ln -s /usr/bin/bwrap "$root/codex-resources/bwrap"
+  printf '{"layoutVersion":1,"version":"%s+compaction.%s","target":"x86_64-unknown-linux-gnu","entrypoint":"bin/codex"}\n' \
+    "$codex_version" "$pkgrel" > "$root/codex-package.json"
+  install -Dm644 "$srcdir/chatgpt-compaction.desktop" "$pkgdir/usr/share/applications/chatgpt-compaction.desktop"
+  install -Dm644 -t "$pkgdir/usr/share/licenses/$pkgname" "$srcdir/LICENSE" "$srcdir/NOTICE"
+}

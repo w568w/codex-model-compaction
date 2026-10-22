@@ -1,0 +1,142 @@
+name: Desktop-matched Arch release
+
+on:
+  schedule:
+    - cron: '17 */6 * * *'
+  workflow_dispatch:
+  push:
+    branches: [packaging]
+    paths:
+      - '.github/workflows/**'
+      - 'arch/**'
+      - 'keys/**'
+      - 'patches/**'
+      - 'scripts/**'
+      - 'tests/**'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: arch-release
+  cancel-in-progress: false
+
+jobs:
+  probe:
+    runs-on: ubuntu-24.04
+    outputs:
+      changed: ${{ steps.probe.outputs.changed }}
+      backend_key: ${{ steps.probe.outputs.backend_key }}
+      release_tag: ${{ steps.probe.outputs.release_tag }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - run: sudo apt-get update && sudo apt-get install -y libarchive-tools
+      - run: python3 -m unittest discover -s tests -p test_pipeline.py -v
+      - id: probe
+        run: python3 scripts/desktop.py --work .work
+      - if: steps.probe.outputs.changed == 'true'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: build-manifest
+          path: .work/manifest.json
+          if-no-files-found: error
+
+  build:
+    needs: probe
+    if: needs.probe.outputs.changed == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    container: archlinux:base-devel
+    steps:
+      - name: Install Arch build dependencies
+        run: >-
+          pacman -Syu --noconfirm --needed git python rustup cmake clang lld pkgconf
+          openssl libcap oniguruma sqlite zstd alsa-lib glib2 gst-plugins-base
+          gst-plugins-base-libs gst-plugins-good gstreamer curl libarchive gnupg
+          bubblewrap ripgrep namcap
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: build-manifest
+          path: .work
+      - name: Restore verified backend
+        id: backend
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830
+        with:
+          path: .work/backend.tar.zst
+          key: arch-backend-${{ needs.probe.outputs.backend_key }}
+      - if: steps.backend.outputs.cache-hit != 'true'
+        name: Apply patch, test policy, and build matching binaries
+        run: bash scripts/build-backend.sh .work
+      - name: Exercise actual app-server with a mock gateway
+        run: |
+          mkdir -p .work/backend
+          tar --zstd -xf .work/backend.tar.zst -C .work/backend
+          python3 tests/test_backend.py --codex .work/backend/bin/codex
+      - if: steps.backend.outputs.cache-hit != 'true'
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830
+        with:
+          path: .work/backend.tar.zst
+          key: arch-backend-${{ needs.probe.outputs.backend_key }}
+      - name: Build and inspect Arch package
+        run: |
+          python3 scripts/package.py stage .work
+          useradd --create-home builder
+          chown -R builder:builder .work/package
+          runuser -u builder -- bash -c 'cd "$1" && makepkg --force --noconfirm --nodeps && namcap ./*.pkg.tar.zst' bash "$PWD/.work/package"
+          python3 scripts/package.py collect .work
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: unsigned-release
+          path: .work/release
+          if-no-files-found: error
+          retention-days: 7
+      - if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: build-diagnostics
+          path: .work/upstream/codex-rs/target/**/build/*/output
+          if-no-files-found: ignore
+          retention-days: 7
+
+  publish:
+    needs: [probe, build]
+    runs-on: ubuntu-24.04
+    container: archlinux:base-devel
+    permissions:
+      contents: write
+    steps:
+      - run: pacman -Syu --noconfirm --needed python github-cli gnupg libarchive
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: unsigned-release
+          path: .work/release
+      - name: Sign release and rebuild repository with three retained versions
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ARCH_SIGNING_KEY: ${{ secrets.ARCH_SIGNING_KEY }}
+          ARCH_SIGNING_PASSPHRASE: ${{ secrets.ARCH_SIGNING_PASSPHRASE }}
+        run: python3 scripts/publish.py --release-dir .work/release --site site
+      - uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa
+        with:
+          path: site
+
+  deploy:
+    needs: publish
+    runs-on: ubuntu-24.04
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e
