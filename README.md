@@ -1,118 +1,60 @@
 # Codex Model Compaction
 
-A small downstream patch for ChatGPT/Codex Desktop on Arch Linux:
+Use GPT, Kimi, and other models together in ChatGPT/Codex Desktop on Arch Linux,
+with context compaction suited to each model.
 
 | Model | Context compaction |
 | --- | --- |
-| `gpt-*`, with a provider supporting remote compaction | Native remote compaction |
-| Kimi and all other model names | Codex's existing ordinary summarization |
+| GPT (`gpt-*`) | Remote compaction, when supported by the provider |
+| Kimi and other models | Ordinary text summaries |
 
-The policy applies to manual, foreground automatic, and background automatic
-compaction. Models may share the same Responses gateway and run concurrently.
-Provider restrictions remain authoritative: the patch never enables remote
-compaction for a provider that disables it.
+This applies to both manual and automatic compaction. Each conversation uses its
+own model's policy, including when models share the same gateway.
 
 ## Installation
 
-Start with the official `chatgpt-bin` installation and its OpenAI Arch repository enabled.
-
-This project uses the owner's existing GitHub Pages custom domain, served directly
-over HTTPS at https://www.w568w.eu.org/codex-model-compaction/.
-
-Repository signing fingerprint:
-
-`93ABE6A96FE686C876BCCA16FF628EB8B9BA6C2C`
-
-Download and inspect the installer, then run it:
+Install the official `chatgpt-bin` package first and keep the OpenAI Arch
+repository enabled. Then run:
 
 ```sh
-curl --proto '=https' --proto-redir '=https' --retry 3 --retry-all-errors -fL https://www.w568w.eu.org/codex-model-compaction/install.sh -o /tmp/install-codex-model-compaction.sh &&
+curl -fL https://www.w568w.eu.org/codex-model-compaction/install.sh -o /tmp/install-codex-model-compaction.sh &&
   bash /tmp/install-codex-model-compaction.sh
 ```
 
-The installer checks the public key fingerprint, imports and locally signs that
-key with `pacman-key`, adds this repository, and runs a normal full upgrade:
+The installer adds the signed package repository and installs
+`codex-model-compaction` through pacman.
 
-```ini
-[codex-model-compaction]
-SigLevel = Required
-CacheServer = https://github.com/w568w/codex-model-compaction/releases/latest/download
-Server = https://www.w568w.eu.org/codex-model-compaction/repo/$arch
-```
+## Usage
 
-Package downloads try GitHub Release assets first. Pages serves the signed
-repository database and retained archives as a fallback, using pacman's native
-`CacheServer` support.
+Fully quit ChatGPT, then open **ChatGPT (Model Compaction)** from the application
+menu (**ChatGPT（模型压缩）** in Chinese). Select your models and use ChatGPT as usual.
 
-Fully quit Desktop once, then launch **ChatGPT (Model Compaction)**. That launcher
-sets `CODEX_CLI_PATH=/usr/bin/codex-model-compaction`. The package does not overwrite
-Desktop's bundled backend or the official `/usr/bin/codex`. Starting a second
-launcher while Desktop is already running does not change its backend.
+To switch back, fully quit the app and open the original **ChatGPT** launcher.
 
-Afterward, update normally with `pacman -Syu`. The package requires the matching
-`chatgpt-bin` version. If a new Desktop is available before a successful patched
-build, pacman rejects the mismatched upgrade transaction. Other packages can be
-updated with `pacman -Syu --ignore=chatgpt-bin` until the matching build is ready.
-Restart Desktop after a backend update to use the newly installed executable.
+## Updates
 
-## Automatic releases
-
-GitHub Actions checks the signed official Desktop Arch repository every six
-hours. New Desktop packages are verified against the pinned OpenAI Linux signing
-key. The bundled `codex --version` selects an exact public `openai/codex` tag;
-missing tags, signature failures, patch conflicts, or failed tests stop release.
-An occasional maintenance commit after 45 quiet days prevents GitHub from
-disabling the scheduled workflow for an inactive public fork.
-
-The workflow builds matching `codex`, `codex-code-mode-host`, and
-`codex-responses-api-proxy` binaries with the source's locked Rust toolchain,
-Cargo dependencies, and verified V8 artifacts. Native policy tests and actual
-app-server tests with a local mock Responses gateway run before packaging.
-Previously verified binaries are reused when the backend source and patch have
-not changed. If Actions evicts its cache, the workflow restores the previous
-Release's backend archive after verifying its signature, identity, and checksum.
-CI never receives personal model API credentials.
-
-The signing job signs the Arch package, backend archive, release manifest, and
-repository databases. GitHub Releases preserve build artifacts; an atomic Pages
-deployment serves the most recent three package versions. Failed runs retain
-the previously published repository. A successful Release with a failed Pages
-deployment can be retried without replacing its immutable package assets.
-
-Every release manifest records the Desktop version and checksum, Codex version,
-upstream commit, patch checksums, pipeline fingerprint, and artifact checksums.
-The Arch package version is the Desktop build number; `pkgrel` increments for a
-new pipeline/patch on the same Desktop version.
-
-## Development
-
-`packaging` is the maintenance branch of this fork. Upstream source is checked
-out cleanly at the selected tag during each build; this branch carries the patch
-and release tooling instead of repeatedly merging upstream `main`.
+Update with your regular system upgrade, then restart ChatGPT:
 
 ```sh
-python3 -m unittest discover -s tests -p test_pipeline.py -v
-python3 scripts/desktop.py --work .work
-bash scripts/build-backend.sh .work
-python3 tests/test_backend.py --codex .work/backend/bin/codex
-python3 scripts/package.py stage .work
-(cd .work/package && makepkg --force --nodeps)
-python3 scripts/package.py collect .work
+sudo pacman -Syu
 ```
 
-The hosted workflow builds in an Arch container. Native tests cover concurrent
-GPT/Kimi requests, manual compaction, continuing after compaction, tool execution,
-model switching, foreground automatic compaction, and GPT-only background remote
-compaction. Pipeline tests cover bad signatures, absent tags, and patch conflicts.
+New Desktop versions are checked every six hours. The package keeps Desktop and
+the patched backend on matching versions. If pacman reports a `chatgpt-bin`
+version conflict while an update is being prepared, update the rest of your
+system with `sudo pacman -Syu --ignore=chatgpt-bin` and retry the full upgrade later.
 
-Ordinary summaries are portable text. This patch does not decrypt GPT's existing
-opaque remote checkpoints when another model is selected in an old conversation;
-that cross-provider history behavior remains the gateway's responsibility.
+## Uninstall
 
-## Rollback
+```sh
+sudo pacman -R codex-model-compaction
+```
 
-Quit Desktop and use its original **ChatGPT** launcher to return to the bundled
-backend. Older signed packages remain available in GitHub Releases and the
-repository retains three versions; a package downgrade must be accompanied by
-the matching Desktop version. Removing `codex-model-compaction` leaves the
-official Desktop and CLI packages intact.
+Use the original **ChatGPT** launcher afterward.
+
+## Links
+
+- [Releases](https://github.com/w568w/codex-model-compaction/releases)
+- [Report an issue](https://github.com/w568w/codex-model-compaction/issues)
+- [Upstream Codex](https://github.com/openai/codex)
+- [Apache 2.0 license](LICENSE)
