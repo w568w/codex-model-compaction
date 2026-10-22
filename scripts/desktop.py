@@ -29,7 +29,7 @@ def download(url, destination):
     destination.parent.mkdir(parents=True, exist_ok=True)
     temporary = destination.with_name(destination.name + ".part")
     print(f"Downloading {destination.name}", flush=True)
-    run("curl", "--proto", "=https", "--proto-redir", "=https", "--fail", "--location", "--silent", "--show-error", "--retry", "3",
+    run("curl", "--proto", "=https", "--proto-redir", "=https", "--fail", "--location", "--silent", "--show-error", "--retry", "3", "--retry-all-errors",
         "--connect-timeout", "15", "--max-time", "600", url, "--output", str(temporary))
     temporary.replace(destination)
 
