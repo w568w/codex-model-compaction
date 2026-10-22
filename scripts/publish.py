@@ -65,7 +65,8 @@ def prepare_repository(releases, site, fingerprint, passphrase, env):
             shutil.copy2(directory / (filename + suffix), package_dir / (filename + suffix))
         packages.append(package_dir / filename)
     database = package_dir / "codex-model-compaction.db.tar.zst"
-    run("repo-add", str(database), *(str(path) for path in packages), env=env)
+    # Older archives remain downloadable; pacman's index must advertise only the newest.
+    run("repo-add", str(database), str(packages[0]), env=env)
     for kind in ("db", "files"):
         archive = package_dir / f"codex-model-compaction.{kind}.tar.zst"
         alias = package_dir / f"codex-model-compaction.{kind}"

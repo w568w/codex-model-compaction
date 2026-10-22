@@ -125,7 +125,8 @@ def resolve(work, previous):
     tag = f"rust-v{codex_version}"
     pkgver = desktop_version.rsplit("-", 1)[0]
     pkgrel = int(previous.get("pkgrel", 0)) + 1 if previous.get("pkgver") == pkgver else 1
-    build_files = [ROOT / "scripts/build-backend.sh", *sorted((ROOT / "patches").glob("*.patch"))]
+    build_files = [ROOT / "scripts/build-backend.sh", ROOT / "scripts/normalize-lock.py",
+                   *sorted((ROOT / "patches").glob("*.patch"))]
     build_digest = hashlib.sha256(b"".join(path.read_bytes() for path in build_files)).hexdigest()
     commit = source_commit(tag)
     return {

@@ -18,6 +18,7 @@ for patch_file in "$project_root"/patches/*.patch; do
     git -C "$source_dir" apply "$patch_file"
 done
 git -C "$source_dir" diff --check
+python3 "$project_root/scripts/normalize-lock.py" "$source_dir/codex-rs"
 
 v8_dir="$work_dir/v8"
 mkdir -p "$v8_dir"
@@ -42,10 +43,13 @@ export ZSTD_SYS_USE_PKG_CONFIG=1
 export CARGO_BUILD_JOBS=${CARGO_BUILD_JOBS:-2}
 export CARGO_PROFILE_RELEASE_DEBUG=0
 export CARGO_PROFILE_RELEASE_LTO=off
+export CARGO_PROFILE_RELEASE_CODEGEN_UNITS=16
 export CARGO_PROFILE_TEST_DEBUG=0
 export STABLE_GIT_COMMIT="$source_commit-compaction"
 
 cd "$source_dir/codex-rs"
+toolchain=$(python3 -c 'import tomllib; print(tomllib.load(open("rust-toolchain.toml", "rb"))["toolchain"]["channel"])')
+rustup toolchain install "$toolchain" --profile minimal
 rustup show active-toolchain
 cargo test --locked -p codex-model-provider compaction_policy --lib
 cargo build --locked --release --bin codex --bin codex-code-mode-host --bin codex-responses-api-proxy
